@@ -1,6 +1,8 @@
 # Lecture 2: More about Elixir
 
-## Ranges
+## More Data Structures
+
+### Ranges
 
 - A range is a sequence of numbers with a start and an end
 - Ranges are created using the `..` operator
@@ -26,7 +28,7 @@ end
 M.f(2) # 2
 ```
 
-## Maps
+### Maps
 
 Maps are defined using the `%{}` and `key=>value`syntax. They are key-value pairs where the key can be any value. Maps are unordered key-value pairs.
 
@@ -38,7 +40,7 @@ m["c"] # 3
 m["d"] # nil (key not found) nil basically means false
 ```
 
-Special map: when all the keys in the map are atoms, we can use the `key: value` syntax
+Special map: when all the keys in the map are **atoms**, we can use the `key: value` syntax
 
 ```elixir
 m = %{a: 1, b: 2} # Although a is not written as :a, it is treated as an atom
@@ -46,11 +48,11 @@ m = %{a: 1, b: 2} # Although a is not written as :a, it is treated as an atom
 
 We can also use `Map.get` to get the value of a key in a map.
 
-`Map.put` can be used to add a key-value pair to a map, but instead of modifying the map, it returns a new map with the key-value pair added. (All the data structures in Elixir are immutable!)
+`Map.put` can be used to add a key-value pair to a map, but instead of modifying the map, it returns a new map with the key-value pair added. (All the data structures in Elixir are **immutable**!)
 
 Update syntax: `%{m | key: value}`, this will update the value of the key in the map (change and assign)
 
-### Pattern matching with maps
+#### Pattern matching with maps
 
 The number of elements does not have to match, but the keys must match.
 
@@ -59,20 +61,14 @@ The number of elements does not have to match, but the keys must match.
 x # 1
 ```
 
-## Keyword Lists
+### Keyword Lists
 
-It's rarely used in the code, but internally, it's used in Elixir.
+Keyword lists are rarely used in the code, but internally, they're usually used in Elixir.
 
 It is a list of tuples where the first element of the tuple is an atom.
 
 ```elixir
 l = [{:a, 1}, {:b, 2}]
-```
-
-we can use `v(numerical index)` to get the result of a command in iex.
-
-```elixir
-v(1) # [{:a, 1}, {:b, 2}]
 ```
 
 For if-else confitions, it's actually keyword lists used internally.
@@ -91,15 +87,23 @@ String.split("Hello, World!", ",", trim: true, parts: 2)
 
 Exlixir is designed for data communication, so it has bit strings.
 
+### Syntax
+
+A bit string is a sequence of bytes. We can use the `<<>>` syntax to define a bit string.
+
 ```elixir
 <<35::3, 46::5>> # The last 3 bytes of 35 and the last 5 bytes of 46
 ```
+
+### Charlists
 
 A charlist is a list of numbers, when each number is a unicode code point.
 
 ```elixir
 [50,51,52] # ~c"234"
 ```
+
+### Pattern Matching
 
 ```elixir
 <<x, y, _::bytes>> = <<35::3, 46::4, 65::7, 66::8>>
@@ -115,11 +119,7 @@ y # 101
 
 The binary and the string is essentially the same thing.
 
-String.graphemes will return the number of characters in a string.
-
-String.codepoints will return the unicode code points of a string. (Some languages have multiple code points for a single character)
-
-When we append a zero byte to a string, it will be treated as a charlist.
+### Common Operations
 
 ```elixir
 "hello" <> <<0>> # will return the charlist [104, 101, 108, 108, 111, 0]
@@ -133,18 +133,28 @@ to_string([104, 101, 108, 108, 111, 0]) # "hello"
 
 `?` is used to get the unicode code point of a character.
 
+When we append a zero byte to a string, it will be treated as a charlist.
+
 ```elixir
 for i <- 2..10, j <- [0x2660, 0x2665, 0x2666, 0x2663], do:"#{i} <> to_string [j]"
 
-for i <- 2..10, j <- [0x2660, 0x2665, 0x2666, 0x2663], do: to_string [?i, j]
+for i <- 2..10, j <- [0x2660, 0x2665, 0x2666, 0x2663], do: to_string [?i, j] # This will not work, as ?i will return the unicode of the character i instead of the variable i
 
+```
+
+### Code Points and Graphemes
+
+String.graphemes will return the number of characters in a string.
+
+String.codepoints will return the unicode code points of a string. (Some languages have multiple code points for a single character)
+
+```elixir
 iex(13)> String.codepoints("👩‍🚒")
 ["👩", "\u200D", "🚒"]
 iex(14)> String.length("👩‍🚒")
 1
 iex(15)> String.graphemes("👩‍🚒")
 ["👩\u200D🚒"]
-
 ```
 
 ## Processes
@@ -156,7 +166,7 @@ f = fn x -> Process.sleep(2000); IO.puts x end
 
 In order to run heavy tasks in parallel, we can use processes. There's a scheduler that will run the processes in parallel.
 
-We can call `spawn` to create a new process, which doesn't take any arguments.
+We can call `spawn` to create a new process, which takes a function with no arguments.
 
 ```elixir
 g = fn x -> spawn(fn -> f.(x) end) end
@@ -169,6 +179,8 @@ The processes are not the same processes as the operating system processes. They
 spawn(fn -> Process.sleep(1000); :ok end)
 # This return the PID of the process
 ```
+
+### Common Operations
 
 `Process.alive?(pid)` will return true if the process is alive.
 
@@ -195,11 +207,7 @@ receive do
 end
 ```
 
-`flush()` will flush the mailbox.
-
-```elixir
-
-```
+`flush()` is a helper function available in the **iex** shell. It prints and clears all messages from the current process’s mailbox.
 
 ### Server
 
@@ -326,6 +334,8 @@ send(:name, message) will send the message to the process with the name.
 
 We can call `Process.whereis(:name)` to get the PID of the process with the name.
 
+`__MODULE__` is a macro that will return the name of the current module. This way, we can omit passing the pid to the functions!
+
 ```elixir
 defmodule RegisteredCounterServer do
   def start(n\\0) do
@@ -359,8 +369,18 @@ defmodule RegisteredCounterServer do
 end
 ```
 
-## List Comprehension
+## Misc
+
+### List Comprehension
 
 ```elixir
 for i <- 1..100, rem(i, 3) == 1, do: i
+```
+
+### IEx
+
+we can use `v(numerical index)` to get the result of a command in iex.
+
+```elixir
+v(1) # [{:a, 1}, {:b, 2}]
 ```
