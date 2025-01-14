@@ -4,11 +4,16 @@ defmodule CardServer do
   end
 
   def new() do
-    send(__MODULE__, {:new})
+    send(__MODULE__, :new)
   end
 
   def shuffle() do
-    send(__MODULE__, {:shuffle})
+    send(__MODULE__, :shuffle)
+  end
+
+  def count() do
+    send(__MODULE__, {:count, self()})
+    receive do x -> x end
   end
 
   def deal(n\\1) do
@@ -20,7 +25,9 @@ defmodule CardServer do
 
   def loop(deck) do
     receive do
-      {:shuffle} -> loop(Enum.shuffle(deck))
+      :new -> loop(new_deck())
+      :shuffle -> loop(Enum.shuffle(deck))
+      {:count, from} -> send(from, length(deck)); loop(deck)
       {:deal, n, from} ->
         if n <= 0 or n > length(deck) do
           response =
@@ -34,7 +41,6 @@ defmodule CardServer do
           send(from, {:ok, taken})
           loop(remaining)
         end
-      {:new} -> loop(new_deck())
     end
   end
 
