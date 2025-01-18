@@ -12,17 +12,12 @@ a {
   border-radius: 10px;
 }
 
-#reader {
+#reader, #backButton {
   background-color: #3696bc;
 }
 
-#writer {
-  background-color: #36bc36;
-}
-
-#backButton {
-  background-color: #4870ff;
-
+#removeButton {
+  background-color: #c4453c;
 }
 
 button {

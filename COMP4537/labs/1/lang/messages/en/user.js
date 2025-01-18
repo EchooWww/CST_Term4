@@ -7,11 +7,13 @@ const userMessages = {
   },
   reader: {
     updateText: "Updated at",
-    backButton: "Back",
   },
   writer: {
     savedText: "Saved at",
     addButton: "Add",
+    removeButton: "Remove",
+  },
+  shared: {
     backButton: "Back",
   },
 };

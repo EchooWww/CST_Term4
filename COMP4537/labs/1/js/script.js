@@ -1,17 +1,64 @@
 import userMessages from "../lang/messages/en/user.js";
 
-const addButton = document.querySelector("#addButton");
-const backButton = document.querySelector("#backButton");
 const noteContainer = document.querySelector("#noteContainer");
 const bodyId = document.querySelector("body").id;
 let notes = JSON.parse(localStorage.getItem("notes")) || [];
 
+// Disclosure: I used ChatGPT here to help me organize the logic for creating the Note class
+class Note {
+  constructor(content = "") {
+    this.content = content;
+  }
+
+  render(index) {
+    const noteDiv = document.createElement("div");
+    noteDiv.classList.add("note");
+
+    const textarea = document.createElement("textarea");
+    textarea.value = this.content;
+    textarea.addEventListener("input", (e) => {
+      notes[index].content = e.target.value;
+      saveNotes();
+    });
+
+    noteDiv.appendChild(textarea);
+
+    if (bodyId === "writer-body") {
+      const removeButton = new Button(userMessages.writer.removeButton, () => {
+        notes.splice(index, 1);
+        saveNotes();
+        renderNotes();
+      });
+      noteDiv.appendChild(removeButton.render("removeButton"));
+    }
+
+    return noteDiv;
+  }
+}
+
+class Button {
+  constructor(label, onClick) {
+    this.label = label;
+    this.onClick = onClick;
+  }
+
+  render(id = "") {
+    const button = document.createElement("button");
+    button.textContent = this.label;
+    if (id !== "") button.id = id;
+    button.addEventListener("click", this.onClick);
+    return button;
+  }
+}
+const backButton = new Button(userMessages.shared.backButton, () => {
+  window.location.href = "index.html";
+});
 document.addEventListener("DOMContentLoaded", () => {
   if (bodyId === "home-body") {
     renderIndex();
   } else if (bodyId === "writer-body") {
     renderWriter();
-  } else if (bodyId == "reader-body") {
+  } else if (bodyId === "reader-body") {
     renderReader();
   }
 });
@@ -21,84 +68,62 @@ function renderIndex() {
     userMessages.home.mainHeading;
   document.querySelector("#subHeading").innerHTML =
     userMessages.home.subHeading;
-  document.querySelector("#reader").innerHTML =
-    userMessages.home.readerLinkText;
-  document.querySelector("#writer").innerHTML =
-    userMessages.home.writerLinkText;
+  const links = document.querySelector("#links");
+  const readerButton = new Button(userMessages.home.readerLinkText, () => {
+    window.location.href = "reader.html";
+  });
+  const writerButton = new Button(userMessages.home.writerLinkText, () => {
+    window.location.href = "writer.html";
+  });
+  links.appendChild(writerButton.render());
+  links.appendChild(readerButton.render("reader"));
 }
 
 function renderWriter() {
-  document.querySelector("#timestamp").innerHTML = `${
-    userMessages.writer.savedText
-  }: ${new Date().toLocaleTimeString()}`;
+  updateTimestamp(userMessages.writer.savedText);
   renderNotes();
-  addButton.innerHTML = userMessages.writer.addButton;
-  backButton.innerHTML = userMessages.writer.backButton;
-  addButton.addEventListener("click", () => {
-    notes.push({ content: "" });
+
+  const addButton = new Button(userMessages.writer.addButton, () => {
+    notes.push(new Note());
     renderNotes();
     saveNotes();
   });
-  backButton.addEventListener("click", () => {
-    window.location.href = "index.html";
-  });
+  document.querySelector("#buttonContainer").appendChild(addButton.render());
+
+  document
+    .querySelector("#buttonContainer")
+    .appendChild(backButton.render("backButton"));
 }
 
 function renderReader() {
-  notes = JSON.parse(localStorage.getItem("notes")) || [];
   renderNotes();
-  updateTimestamp();
+  updateTimestamp(userMessages.reader.updateText);
   setInterval(() => {
     notes = JSON.parse(localStorage.getItem("notes")) || [];
     renderNotes();
-    updateTimestamp();
+    updateTimestamp(userMessages.reader.updateText);
   }, 2000);
-  backButton.innerHTML = userMessages.reader.backButton;
-  backButton.addEventListener("click", () => {
-    window.location.href = "index.html";
-  });
-}
 
-function updateTimestamp() {
-  const now = new Date();
-  document.querySelector("#timestamp").textContent = `${
-    userMessages.reader.updateText
-  }: ${now.toLocaleTimeString()}`;
+  document
+    .querySelector("#buttonContainer")
+    .appendChild(backButton.render("backButton"));
 }
 
 function saveNotes() {
   localStorage.setItem("notes", JSON.stringify(notes));
-  const now = new Date();
-  timestamp.textContent = `${
-    userMessages.writer.savedText
-  }: ${now.toLocaleTimeString()}`;
+  updateTimestamp(userMessages.writer.savedText);
 }
 
 function renderNotes() {
   noteContainer.innerHTML = "";
   notes.forEach((note, index) => {
-    const noteDiv = document.createElement("div");
-    noteDiv.classList.add("note");
-
-    const textarea = document.createElement("textarea");
-    textarea.value = note.content;
-    textarea.addEventListener("input", (e) => {
-      notes[index].content = e.target.value;
-      saveNotes();
-    });
-
-    const removeButton = document.createElement("button");
-    removeButton.textContent = "Remove";
-    removeButton.addEventListener("click", () => {
-      notes.splice(index, 1);
-      saveNotes();
-      renderNotes();
-    });
-
-    noteDiv.appendChild(textarea);
-    if (bodyId == "writer-body") {
-      noteDiv.appendChild(removeButton);
-    }
-    noteContainer.appendChild(noteDiv);
+    const noteInstance = new Note(note.content);
+    noteContainer.appendChild(noteInstance.render(index));
   });
+}
+
+function updateTimestamp(text) {
+  document.querySelector(
+    "#timestamp"
+  ).textContent = `${text}: ${new Date().toLocaleTimeString()}`;
 }
