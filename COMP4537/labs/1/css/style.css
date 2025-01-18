@@ -1,0 +1,60 @@
+body {
+  font-family: "Lucida Console", "Monaco", monospace;
+  margin: 2em
+}
+
+a {
+  color: white;
+  padding: 14px 25px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: 10px;
+}
+
+#reader {
+  background-color: #3696bc;
+}
+
+#writer {
+  background-color: #36bc36;
+}
+
+#backButton {
+  background-color: #4870ff;
+
+}
+
+button {
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: 14px 25px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+#noteContainer {
+  min-height: 2em;
+}
+
+textarea {
+  margin: 0.5em 0;
+  box-sizing: border-box;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  background-color: #f8f8f8;
+  font-size: 16px;
+  resize: none;
+  border-radius: 5px;
+}
+
+.note {
+  display: flex;
+  align-items: center;
+}
