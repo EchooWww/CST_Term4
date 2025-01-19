@@ -22,11 +22,18 @@ There are two types of strings in Rust:
    let h = &s1[0..1]; // Slices the string from index 0 to 1, excluding 1
    ```
 
-   Be cautious: slicing uses byte indices, not character indices. For character operations, use iterators:
+   Be cautious: slicing uses byte indices, not character indices. For example:
+
+   ```rust
+   let s = "नमस्ते";
+   let slice = &s[0..3]; // This works because 'न' is 3 bytes long.
+   ```
+
+   To work with characters, use iterators:
 
    ```rust
    let s1 = "Hello, world!";
-   println!("{}", s1.chars().count());
+   println!("Number of characters: {}", s1.chars().count());
    ```
 
 2. **String object**: Created with `String::from()`:
@@ -64,7 +71,16 @@ print_str(&s2);
 
 ### Deref Coercion
 
-Rust’s `Deref` trait allows `&String` to be used where `&str` is expected, as `Deref` converts `String` to `str`.
+Rust’s `Deref` trait allows `&String` to be used where `&str` is expected, as `Deref` converts `String` to `str`. This means the following works seamlessly:
+
+```rust
+fn print_str(s: &str) {
+    println!("{}", s);
+}
+
+let s = String::from("hello");
+print_str(&s); // Deref coercion makes this possible.
+```
 
 ## Structs
 
@@ -94,7 +110,7 @@ impl Circle {
 }
 ```
 
-Methods can use `Self` (for type) `self` (for instances) and `&mut self` (for mutable references). Rust automatically dereferences or references structs when invoking methods.
+Methods can use `self` (for instances) and `&mut self` (for mutable references). Rust automatically dereferences or references structs when invoking methods.
 
 ```rust
 let mut c = Circle::new(Point(0.0, 0.0), 1.0);
@@ -113,6 +129,16 @@ impl fmt::Display for Circle {
 }
 ```
 
+### Notes
+
+- `self` must always be the first parameter in methods.
+- Methods expecting mutable references require mutable instances.
+
+```rust
+let mut c = Circle::new(Point(0.0, 0.0), 1.0);
+c.translate(Vector(1.0, 2.0));
+```
+
 ## Error Handling
 
 Use `Option` for optional values:
@@ -127,16 +153,18 @@ fn square_root(x: f32) -> Option<f32> {
 }
 
 let result = square_root(2.0).unwrap(); // May panic if None
-let result = square_root(2.0).expect("Cannot take square root of a negative number");
+let result = square_root(-2.0).expect("Cannot take square root of a negative number");
 ```
 
-Use the `?` operator for concise error handling. It will return `None` if the result is `None`, and unwrap the value otherwise:
+Use the `?` operator for concise error handling:
 
 ```rust
 fn f(x: f32) -> Option<f32> {
     Some(square_root(x)?.ln())
 }
 ```
+
+Note that `?` can only be used in functions returning `Result` or `Option`, because when an error occurs from `?`, the function returns early with the error.
 
 ## IO
 
@@ -164,14 +192,14 @@ fn main() {
 
 ### Reading multiple lines
 
-Store lines in a vector. Note we need to clone the line when adding it to the vector, to avoid ownership issues:
+Store lines in a vector:
 
 ```rust
 fn read_lines() -> io::Result<Vec<String>> {
     let mut line = String::new();
     let mut v = Vec::new();
     while io::stdin().read_line(&mut line)? > 0 {
-        v.push(line.clone()); // Clone the line to avoid cosuming it
+        v.push(line.clone());
         line.clear();
     }
     Ok(v)
@@ -212,12 +240,43 @@ To convert strings to characters:
 ```rust
 let s = "नमस्ते";
 let chars: Vec<_> = s.chars().collect();
+println!("{:?}", chars); // ['न', 'म', 'स', '्', 'त', 'े']
 ```
 
-Before collecting, we can manipulate the iterator using `map`, `filter`, `enumerate`, etc. Just like in Python:
+Note: `chars()` iterates over Unicode scalar values, returning characters rather than bytes.
 
-```rust
-let a = vec![1, 2, 3];
-let v: Vec<_> = a.into_iter().map(|x| x * 2).collect();
-assert_eq!(v, vec![2, 4, 6]);
-```
+### Three Ways to Create Iterators
+
+1. **`iter()`**:
+
+   - Creates an iterator that **borrows** each element of a collection (e.g., array, vector).
+   - It doesn't consume the collection, so the collection can still be used after iteration.
+   - Example:
+     ```rust
+     let a = vec![1, 2, 3];
+     let v: Vec<_> = a.iter().collect();
+     assert_eq!(v, vec![&1, &2, &3]); // Note: Elements are references.
+     ```
+
+2. **`into_iter()`**:
+
+   - Consumes the collection and creates an iterator that takes ownership of its elements.
+   - After using `into_iter()`, the original collection is no longer available.
+   - Example:
+     ```rust
+     let a = vec![1, 2, 3];
+     let v: Vec<_> = a.into_iter().collect();
+     assert_eq!(v, vec![1, 2, 3]); // Elements are owned, no references.
+     ```
+
+3. **`iter_mut()`**:
+   - Creates a **mutable iterator** that allows modifying elements of the collection during iteration.
+   - The collection must be mutable.
+   - Example:
+     ```rust
+     let mut a = vec![1, 2, 3];
+     for x in a.iter_mut() {
+         *x *= 2; // Modify elements in place.
+     }
+     assert_eq!(a, vec![2, 4, 6]);
+     ```
