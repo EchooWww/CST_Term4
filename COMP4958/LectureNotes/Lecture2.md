@@ -1,4 +1,4 @@
-# Lecture 2: More about Elixir
+# Lecture 2: More about Elixir and Processes
 
 ## More Data Structures
 

@@ -97,4 +97,3 @@ defmodule RegisteredCounterServer do
     end
   end
 end
-
