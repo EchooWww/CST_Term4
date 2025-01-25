@@ -38,7 +38,7 @@ fn read_file_lines(file: &str) -> io::Result<Vec<String>> {
 }
 
 fn lines () -> io::Result<Vec<String>> {
-  io::stdin().lines().collect()
+  io::stdin().lines().collect() 
 }
 
 fn file_lines(file: &str) -> io::Result<Vec<String>> {

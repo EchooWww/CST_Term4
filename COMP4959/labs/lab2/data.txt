@@ -1,0 +1,3 @@
+homer simpson 25 # bad at nuclear engineering
+ned flanders 99 ! high score
+monty burns 65
