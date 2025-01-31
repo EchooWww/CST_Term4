@@ -37,12 +37,18 @@ defmodule Arithmetic.Server do
       GenServer.start(__MODULE__, n, name: __MODULE__)
     end
 
+  def select_worker() do
+    GenServer.call(__MODULE__, {:select_worker})
+  end
+
   def square(x) do
-    GenServer.call(__MODULE__, {:square, x})
+    worker = select_worker()
+    Arithmetic.Worker.square(worker, x)
   end
 
   def sqrt(x) do
-    GenServer.call(__MODULE__, {:sqrt, x})
+    worker = select_worker()
+    Arithmetic.Worker.sqrt(worker, x)
   end
 
   @impl true
@@ -57,17 +63,9 @@ defmodule Arithmetic.Server do
   end
 
   @impl true
-  def handle_call({operation, x}, from, state) do
+  def handle_call({:select_worker}, _from, state) do
     worker = Enum.at(state.workers, state.next)
-    spawn(fn->
-      result =
-        case operation do
-        :square -> Arithmetic.Worker.square(worker, x)
-        :sqrt -> Arithmetic.Worker.sqrt(worker, x)
-      end
-      GenServer.reply(from, result)
-    end)
     next = rem(state.next + 1, length(state.workers))
-    {:noreply, %{state | next: next}}
+    {:reply, worker, %{state | next: next}}
   end
 end
