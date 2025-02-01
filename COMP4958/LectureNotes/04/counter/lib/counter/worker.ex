@@ -1,7 +1,7 @@
 defmodule Counter.Worker do
   use GenServer
 
-  def start_linl(n\\0) do
+  def start_link(n\\0) do
     Genserver.start_link(__MODULE__, n, name: __MODULE__) # start_link is a function that starts a process and links it to the current process
   end
 
