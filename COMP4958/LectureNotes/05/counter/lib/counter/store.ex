@@ -18,18 +18,22 @@ defmodule Counter.Store do
   end
 
   @impl true
-  def handle_cast({:put, value}, file) do
-    File.write(file, :erlang.term_to_binary(value))
+  def handle_cast({:put, key, value}, file) do
+    :ok = File.write(read_file(file), key, value)
     {:noreply, file}
   end
 
   @impl true
-  def handle_call(:get, _from, file) do
+  def handle_call({:get, key}, _from, file) do
     value =
-      case File.read(file) do
-        {:ok, content} -> :erlang.binary_to_term(content)
-        {:error, _} -> nil
-      end
+      Map.get(read_file(file), key, 0)
     {:reply, value, file}
+  end
+
+  defp read_file(file) do
+    case File.read(file) do
+      {:ok, content} -> :erlang.binary_to_term(content)
+      {:error, _} -> nil
+    end
   end
 end
