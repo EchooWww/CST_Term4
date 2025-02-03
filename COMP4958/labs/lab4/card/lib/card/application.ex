@@ -9,7 +9,7 @@ defmodule Card.Application do
   def start(_type, _args) do
     children = [
       {Card.Store, "cards.db"},
-      {Card.Worker, nil}
+      Card.Worker
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

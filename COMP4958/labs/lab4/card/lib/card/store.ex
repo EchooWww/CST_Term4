@@ -1,4 +1,4 @@
-defmodule Counter.Store do
+defmodule Card.Store do
   use GenServer
   def start_link(file) do
     GenServer.start_link(__MODULE__, file, name: __MODULE__)

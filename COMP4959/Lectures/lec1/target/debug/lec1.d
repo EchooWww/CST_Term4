@@ -1,0 +1,1 @@
+/Users/echo/Desktop/CST-T4/COMP4959/lec1/target/debug/lec1: /Users/echo/Desktop/CST-T4/COMP4959/lec1/src/arrays.rs /Users/echo/Desktop/CST-T4/COMP4959/lec1/src/main.rs /Users/echo/Desktop/CST-T4/COMP4959/lec1/src/numbers.rs /Users/echo/Desktop/CST-T4/COMP4959/lec1/src/slices.rs /Users/echo/Desktop/CST-T4/COMP4959/lec1/src/vectors.rs
