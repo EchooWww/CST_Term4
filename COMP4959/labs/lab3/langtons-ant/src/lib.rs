@@ -2,10 +2,10 @@ use wasm_bindgen::prelude::*;
 
 #[derive(Clone, Copy)]
 enum Direction {
-    Up,
-    Right,
-    Down,
-    Left,
+    Up = 0,
+    Right = 1,
+    Down = 2,
+    Left = 3,
 }
 
 #[wasm_bindgen]
@@ -25,15 +25,13 @@ impl Ant {
             x: size / 2,
             y: size / 2,
             direction: Direction::Up,
-            grid: vec![0; size * size], // 初始化为全白网格
+            grid: vec![0; size * size],
             size,
         }
     }
 
     pub fn step(&mut self) -> Vec<u8> {
         let index = self.y * self.size + self.x;
-
-        self.grid[index] = 1 - self.grid[index]; 
 
         self.direction = match (self.grid[index], self.direction) {
             (0, Direction::Up) => Direction::Right,
@@ -46,6 +44,8 @@ impl Ant {
             (1, Direction::Left) => Direction::Down,
             _ => self.direction,
         };
+
+        self.grid[index] = 1 - self.grid[index]; 
 
         match self.direction {
             Direction::Up => {
@@ -79,5 +79,9 @@ impl Ant {
 
     pub fn y(&self) -> usize {
         self.y
+    }
+
+    pub fn direction(&self) -> usize {
+        self.direction as usize
     }
 }
