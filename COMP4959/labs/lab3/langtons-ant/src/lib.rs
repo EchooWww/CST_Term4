@@ -49,24 +49,16 @@ impl Ant {
 
         match self.direction {
             Direction::Up => {
-                if self.y > 0 {
-                    self.y -= 1;
-                }
+                self.y -= 1;
             }
             Direction::Right => {
-                if self.x < self.size - 1 {
-                    self.x += 1;
-                }
+                self.x += 1;
             }
             Direction::Down => {
-                if self.y < self.size - 1 {
-                    self.y += 1;
-                }
+                self.y += 1;
             }
             Direction::Left => {
-                if self.x > 0 {
-                    self.x -= 1;
-                }
+                self.x -= 1;
             }
         };
 

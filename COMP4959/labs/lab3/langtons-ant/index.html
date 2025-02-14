@@ -31,7 +31,7 @@
         const ant = new Ant(gridSize);
 
         let lastTime = Date.now();
-        const speed = 1000;
+        const speed = 200;
 
         function draw(grid, antX, antY) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -40,6 +40,9 @@
             for (let x = 0; x < gridSize; x++) {
               ctx.fillStyle = grid[y * gridSize + x] === 1 ? "black" : "white";
               ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+              ctx.strokeStyle = "gray";
+              ctx.lineWidth = 0.5;
+              ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
             }
           }
 
@@ -66,6 +69,16 @@
             const antX = ant.x();
             const antY = ant.y();
             const antDir = ant.direction();
+
+            if (
+              antX === -1 ||
+              antX === gridSize ||
+              antY === -1 ||
+              antY === gridSize
+            ) {
+              running = false;
+              return;
+            }
 
             draw(grid, antX, antY, antDir);
 
