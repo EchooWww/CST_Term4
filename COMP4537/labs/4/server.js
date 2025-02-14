@@ -8,6 +8,7 @@ class Definition {
     this.definition = definition;
   }
 }
+
 class Server {
   constructor(port) {
     this.port = port || 80;
@@ -18,6 +19,10 @@ class Server {
   handleRequest(req, res) {
     const parsedUrl = url.parse(req.url, true);
     let query = parsedUrl.query;
+    if (req.method === "GET" && req.url === "/health") {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      return res.end("OK");
+    }
     if (parsedUrl.pathname === "/api/definitions") {
       if (req.method === "GET") {
         if (Object.keys(query).length === 0) {
