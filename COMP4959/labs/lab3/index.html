@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Langton's Ant</title>
+    <style>
+      canvas {
+        border: 1px solid black;
+        display: block;
+        margin: 20px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="antCanvas" width="340" height="340"></canvas>
+    <script type="module">
+      import init, { Ant } from "./pkg/langtons_ant.js";
+
+      const antImage = new Image();
+      antImage.src = "./src/ant.svg";
+
+      async function main() {
+        await init();
+        const canvas = document.getElementById("antCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const gridSize = 17;
+        const cellSize = canvas.width / gridSize;
+
+        const ant = new Ant(gridSize);
+
+        let lastTime = Date.now();
+        const speed = 200;
+
+        function draw(grid, antX, antY) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+              ctx.fillStyle = grid[y * gridSize + x] === 1 ? "black" : "white";
+              ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+              ctx.strokeStyle = "gray";
+              ctx.lineWidth = 0.5;
+              ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+            }
+          }
+
+          ctx.save();
+
+          const centerX = antX * cellSize + cellSize / 2;
+          const centerY = antY * cellSize + cellSize / 2;
+
+          ctx.translate(centerX, centerY);
+          const angle = (Math.PI / 2) * ant.direction();
+          ctx.rotate(angle);
+
+          const antSize = cellSize * 0.8;
+          ctx.drawImage(antImage, -antSize / 2, -antSize / 2, antSize, antSize);
+          ctx.restore();
+        }
+
+        function animate() {
+          const now = Date.now();
+          const elapsed = now - lastTime;
+
+          if (elapsed > speed) {
+            const grid = ant.step();
+            const antX = ant.x();
+            const antY = ant.y();
+            const antDir = ant.direction();
+
+            if (
+              antX === -1 ||
+              antX === gridSize ||
+              antY === -1 ||
+              antY === gridSize
+            ) {
+              running = false;
+              return;
+            }
+
+            draw(grid, antX, antY, antDir);
+
+            lastTime = now;
+          }
+
+          requestAnimationFrame(animate);
+        }
+
+        animate();
+      }
+
+      main();
+    </script>
+  </body>
+</html>

@@ -5,7 +5,7 @@ defmodule Counter.MixProject do
     [
       app: :static,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.19-dev",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]

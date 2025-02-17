@@ -1,6 +1,7 @@
 defmodule Arithmetic.Worker do
   use GenServer
-  # Client API
+
+  # client
   def start() do
     GenServer.start(__MODULE__, nil)
   end
@@ -10,11 +11,11 @@ defmodule Arithmetic.Worker do
   end
 
   def sqrt(pid, x) do
-    GenServer.call(pid, {:sqrt, x}, timeout: 100000) # change the timeout to 100000
+    GenServer.call(pid, {:sqrt, x}, 100000)
   end
 
-  # server impleentation
-  @impl true # part of the implementation, tell the compiler to check if that is correctly implemented as the GenServer behaviour
+  # server (implementation)
+  @impl true
   def init(arg) do
     {:ok, arg}
   end
@@ -26,8 +27,9 @@ defmodule Arithmetic.Worker do
 
   @impl true
   def handle_call({:sqrt, x}, _from, state) do
-    Process.sleep(10000) # simulate a long running operation
-    reply = if x >=0, do: :math.sqrt(x), else: :error
+    Process.sleep(10000)
+    reply = if x >= 0, do: :math.sqrt(x), else: :error
     {:reply, reply, state}
   end
 end
+

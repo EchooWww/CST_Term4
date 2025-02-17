@@ -9,10 +9,9 @@ defmodule Counter.Application do
   def start(_type, _args) do
     children = [
       # Starts a worker by calling: Counter.Worker.start_link(arg)
-      # {Counter.Worker, arg}
-      # {Counter.Store, "counter.db"},
-      Supervisor.child_spec({Counter.Worker, [W1]}, id: :worker_1),
-      Supervisor.child_spec({Counter.Worker, [W2]}, id: :worker_2),
+      {Counter.Store, "counter.db"},
+      Supervisor.child_spec({Counter.Worker, W1}, id: :worker_1),
+      Supervisor.child_spec({Counter.Worker, W2}, id: :worker_2)
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

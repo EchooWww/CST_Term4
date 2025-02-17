@@ -8,6 +8,6 @@ defmodule Counter.WorkerSupervisor do
       id: Counter.Worker,
       start: {Counter.Worker, :start_link, [name]}
     }
-    DynamicSupervisor.start_child({:global, __MODULE__}, child_spec) # this is equivalent to Supervisor.child_spec({Counter.Worker, name}), which calls Counter.Worker.start_link(name)
+    DynamicSupervisor.start_child({:global, __MODULE__}, child_spec)
   end
 end

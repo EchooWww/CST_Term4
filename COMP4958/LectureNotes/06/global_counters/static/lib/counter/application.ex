@@ -9,7 +9,8 @@ defmodule Counter.Application do
   def start(_type, _args) do
     children = [
       # Starts a worker by calling: Counter.Worker.start_link(arg)
-      # {Counter.Worker, arg}
+      {Counter.Store, "counter.db"},
+      {Counter.Worker, 0}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

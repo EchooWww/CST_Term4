@@ -1,0 +1,19 @@
+- processes can be linked (Process.link(other))
+- a process dies with a reason
+- when a process dies, it sends an exit signal containing the reason of its
+  death to its linked processes
+- a process can trap exit signals (Process.flag(:trap_exit, true))
+  * a trapped exit signal is transformed into a message of the form
+    {:EXIT, from, reason} in the mailbox
+- exit signals with reason :normal or :kill are special
+  * a :normal exit signal doesn't kill the receiving process
+  * a :kill exit signal cannot be trapped; the receiving process dies
+    with reason :killed
+  * for other exit signals, the receiving process dies with the same reason
+    if it does not trap exit signals
+  note: the :kill signal can only be sent explicitly
+(See doc on Process.exit)
+
+Some other useful functions related to processes:
+- Process.info(pid, flag)  # :trap_exit, :links
+- Process.alive?(pid)

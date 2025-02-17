@@ -2,11 +2,11 @@ defmodule Counter.Server do
   use GenServer
 
   def start(n \\ 0) do
-    GenServer.start(__MODULE__, n, name: __MODULE__) # Optional argument in the start function to name the GenServer process
+    GenServer.start(__MODULE__, n, name: __MODULE__)
   end
 
-  def inc(amt\\1) do
-    GenServer.cast(__MODULE__, {:inc, amt}) # cast or call can take the name of the GenServer process
+  def inc(amt \\ 1) do
+    GenServer.cast(__MODULE__, {:inc, amt})
   end
 
   def value() do
@@ -24,7 +24,7 @@ defmodule Counter.Server do
   end
 
   @impl true
-  def handle_cast({:inc, amt},state) do
-    {:noreply, state+amt}
+  def handle_cast({:inc, amt}, state) do
+    {:noreply, state + amt}
   end
 end

@@ -1,20 +1,20 @@
 defmodule Counter.Server do
   use GenServer
 
-  # client API
-  def start(n\\0) do
+  # client
+  def start(n \\ 0) do
     GenServer.start(__MODULE__, n)
   end
 
   def inc(pid) do
-    GenServer.cast(pid, :int)
+    GenServer.cast(pid, :inc)
   end
 
   def value(pid) do
     GenServer.call(pid, :value)
   end
 
-  # Server implementation
+  # server
   @impl true
   def init(arg) do
     {:ok, arg}
@@ -30,3 +30,4 @@ defmodule Counter.Server do
     {:noreply, state + 1}
   end
 end
+
