@@ -8,7 +8,7 @@ defmodule Chat.Client do
     :gen_tcp.controlling_process(socket, receiver_pid)
 
     # Start the user input loop
-    result = input_loop(socket)
+    result = input_loop(socket, receiver_pid)
 
     # Ensure socket is closed when done
     :gen_tcp.close(socket)
@@ -16,21 +16,26 @@ defmodule Chat.Client do
     result
   end
 
-  defp input_loop(socket) do
+  defp input_loop(socket, receiver_pid) do
     case IO.gets("") do
       :eof ->
-        # User pressed Ctrl+D, close connection properly
-        IO.puts("Connection closed")
+        # User pressed Ctrl+D, terminate the receiver process first
+        Process.exit(receiver_pid, :normal)
+        # Close connection
+        :gen_tcp.close(socket)
+        IO.puts("Connection closed by user")
         :ok
 
-      {:error, reason} ->
-        IO.puts("Error reading input: #{inspect(reason)}")
-        {:error, reason}
+        {:error, reason} ->
+          Process.exit(receiver_pid, :normal)
+          :gen_tcp.close(socket)
+          IO.puts("Error reading input: #{inspect(reason)}")
+          {:error, reason}
 
-      line ->
-        # Send user input to server
-        :gen_tcp.send(socket, line)
-        input_loop(socket)
+        line ->
+          # Send user input to server
+          :gen_tcp.send(socket, line)
+          input_loop(socket, receiver_pid)
     end
   end
 
