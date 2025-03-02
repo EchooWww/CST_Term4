@@ -7,16 +7,8 @@ defmodule Chat.Application do
 
   @impl true
   def start(_type, _args) do
-    port = String.to_integer(System.get_env("PORT") || "6666")
-
     children = [
-      Chat.Server,
-      %{
-        id: Chat.ProxyServer,
-        start: {Chat.ProxyServer, :start_link, [port]},
-        type: :worker,
-        restart: :permanent
-      }
+      Chat.Server
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
