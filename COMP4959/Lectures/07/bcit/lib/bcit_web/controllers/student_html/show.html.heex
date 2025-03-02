@@ -1,0 +1,18 @@
+<.header>
+  Student {@student.id}
+  <:subtitle>This is a student record from your database.</:subtitle>
+  <:actions>
+    <.link href={~p"/students/#{@student}/edit"}>
+      <.button>Edit student</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Sid">{@student.sid}</:item>
+  <:item title="Firstname">{@student.firstname}</:item>
+  <:item title="Last">{@student.last}</:item>
+  <:item title="Score">{@student.score}</:item>
+</.list>
+
+<.back navigate={~p"/students"}>Back to students</.back>

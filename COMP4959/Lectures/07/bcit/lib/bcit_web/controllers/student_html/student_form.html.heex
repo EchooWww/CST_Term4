@@ -1,0 +1,12 @@
+<.simple_form :let={f} for={@changeset} action={@action}>
+  <.error :if={@changeset.action}>
+    Oops, something went wrong! Please check the errors below.
+  </.error>
+  <.input field={f[:sid]} type="text" label="Sid" />
+  <.input field={f[:firstname]} type="text" label="Firstname" />
+  <.input field={f[:last]} type="text" label="Last" />
+  <.input field={f[:score]} type="number" label="Score" />
+  <:actions>
+    <.button>Save Student</.button>
+  </:actions>
+</.simple_form>
