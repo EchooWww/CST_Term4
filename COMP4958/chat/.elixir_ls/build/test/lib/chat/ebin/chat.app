@@ -1,0 +1,9 @@
+{application,chat,
+             [{modules,['Elixir.Chat.Application','Elixir.Chat.Client',
+                        'Elixir.Chat.ProxyServer','Elixir.Chat.Server']},
+              {optional_applications,[]},
+              {applications,[kernel,stdlib,elixir,logger]},
+              {description,"chat"},
+              {registered,[]},
+              {vsn,"0.1.0"},
+              {mod,{'Elixir.Chat.Application',[]}}]}.

@@ -25,8 +25,9 @@ defmodule Chat.Server do
   end
 
   def send_message(sender, recipient, message) do
-    GenServer.cast({:global, __MODULE__}, {:send_message, sender, recipient, message})
+    GenServer.call({:global, __MODULE__}, {:send_message, sender, recipient, message})
   end
+
 
   # Server callbacks
   @impl true
@@ -109,25 +110,29 @@ defmodule Chat.Server do
   end
 
   @impl true
-  def handle_cast({:send_message, sender, recipients, message}, state) do
-    # Handle different recipient types
-    recipients_list = parse_recipients(recipients, state.nicknames, sender)
-    Enum.each(recipients_list, fn recipient ->
-      case Map.get(state.nicknames, recipient) do
-        nil ->
-          Logger.info("No recipient found with nickname: #{recipient}")
+def handle_call({:send_message, sender, recipients, message}, _from, state) do
+  recipients_list = parse_recipients(recipients, state.nicknames, sender)
 
-        pid ->
-          if is_pid(pid) and Node.ping(node(pid)) != :pang do
-            send(pid, {:chat_message, sender, message})
-          else
-            Logger.warning("Recipient #{recipient} process is dead or unreachable, will be cleaned up by monitor")
-          end
-      end
-    end)
+  {success, failed} = Enum.reduce(recipients_list, {[], []}, fn recipient, {success, failed} ->
+    case Map.get(state.nicknames, recipient) do
+      nil ->
+        Logger.info("No recipient found with nickname: #{recipient}")
+        {success, [recipient | failed]}
 
-    {:noreply, state}
-  end
+      pid ->
+        if is_pid(pid) and Node.ping(node(pid)) != :pang do
+          send(pid, {:chat_message, sender, message})
+          {[recipient | success], failed}
+        else
+          Logger.warning("Recipient #{recipient} process is dead or unreachable, will be cleaned up by monitor")
+          {success, [recipient | failed]}
+        end
+    end
+  end)
+
+  {:reply, {Enum.reverse(success), Enum.reverse(failed)}, state}
+end
+
 
   @impl true
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do

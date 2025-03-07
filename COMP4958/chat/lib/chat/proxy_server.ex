@@ -2,6 +2,7 @@ defmodule Chat.ProxyServer do
   require Logger
   use Task
 
+
   @default_port 6666
   def start_link(port \\ @default_port) do
     Task.start_link(fn -> accept(port) end)
@@ -131,19 +132,32 @@ defmodule Chat.ProxyServer do
       # MSG command - requires recipient and message
       String.match?(command, ~r{^/MSG\s+\S+\s+\S+}) or String.match?(command, ~r{^/M\s+\S+\s+\S+}) ->
         if nickname do
-          # Parse recipient and message
           [_cmd | rest] = String.split(command, " ", parts: 2)
           [recipients_str | message_parts] = String.split(List.to_string(rest), " ", parts: 2)
           message = List.first(message_parts) || ""
 
-          # Send the message
-          Chat.Server.send_message(nickname, recipients_str, message)
-          recipients = if recipients_str == "*" do
-            "all users"
-          else
-            recipients_str
+          {success, failed} = Chat.Server.send_message(nickname, recipients_str, message)
+
+          response = cond do
+            Enum.empty?(failed) ->
+              recipients_display = if recipients_str == "*" do
+                "all users"
+              else
+                recipients_str
+              end
+              "Message sent to #{recipients_display}"
+
+            Enum.empty?(success) ->
+              failed_str = Enum.join(failed, ", ")
+              "No recipients found: #{failed_str}"
+
+            true ->
+              success_str = Enum.join(success, ", ")
+              failed_str = Enum.join(failed, ", ")
+              "Message sent to #{success_str}, recipients not found: #{failed_str}"
           end
-          {nickname, "Message sent to #{recipients}"}
+
+          {nickname, response}
         else
           {nickname, "You must set a nickname before sending messages. Use /NICK <nickname>"}
         end
