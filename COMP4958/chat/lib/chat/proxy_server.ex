@@ -8,6 +8,7 @@ defmodule Chat.ProxyServer do
   end
 
   def accept(port) do
+
     # Open the socket in passive mode, handling potential errors
     case :gen_tcp.listen(port, [
       :binary,
@@ -71,7 +72,7 @@ defmodule Chat.ProxyServer do
       # Handle TCP closure
       {:tcp_closed, ^socket} ->
         # Client disconnected, clean up nickname if registered
-        if nickname, do: Chat.Server.unregister_nickname(nickname)
+        if nickname, do: Chat.Server.unregister_nickname(nickname, :disconnect)
         Logger.info("Client disconnected#{if nickname, do: " (#{nickname})", else: ""}")
         :ok
 
@@ -88,22 +89,22 @@ defmodule Chat.ProxyServer do
       # NICK command - exactly as specified in the requirements
       String.match?(command, ~r{^/NICK\s+\S+}) or String.match?(command, ~r{^/N\s+\S+}) ->
         new_nickname = command
-                      |> String.split(" ", parts: 2)
-                      |> List.last
-                      |> String.split(" ")
-                      |> List.first
+      |> String.split(" ", parts: 2)
+      |> List.last
+      |> String.split(" ")
+      |> List.first
 
-        case Chat.Server.register_nickname(new_nickname, self()) do
-          {:ok, message} ->
-            # If changing nickname, unregister old one
-            if nickname && nickname != new_nickname do
-              Chat.Server.unregister_nickname(nickname)
-            end
-            {new_nickname, message}
-
-          {:error, message} ->
-            {nickname, message}
+      if nickname && nickname != new_nickname do
+        case Chat.Server.change_nickname(nickname, new_nickname, self()) do
+          {:ok, message} -> {new_nickname, message}
+          {:error, message} -> {nickname, message}
         end
+      else
+        case Chat.Server.register_nickname(new_nickname, self()) do
+          {:ok, message} -> {new_nickname, message}
+          {:error, message} -> {nickname, message}
+        end
+      end
 
       # LIST command - no arguments needed
       String.match?(command, ~r{^/LIST$}) or String.match?(command, ~r{^/L$}) ->

@@ -7,9 +7,11 @@ defmodule Chat.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      Chat.Server
-    ]
+    children = if String.contains?(Atom.to_string(Node.self()), "server") do
+      [Chat.Server]
+    else
+      []
+    end
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

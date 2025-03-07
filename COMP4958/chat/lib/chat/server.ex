@@ -5,23 +5,27 @@ defmodule Chat.Server do
 
   # Client API
   def start_link(_opts) do
-    GenServer.start_link(__MODULE__, nil, name: __MODULE__)
+    GenServer.start_link(__MODULE__, nil, name: {:global, __MODULE__})
   end
 
   def register_nickname(nickname, pid) do
-    GenServer.call(__MODULE__, {:register_nickname, nickname,pid})
+    GenServer.call({:global, __MODULE__}, {:register_nickname, nickname,pid})
   end
 
-  def unregister_nickname(nickname) do
-    GenServer.call(__MODULE__, {:unregister_nickname, nickname, self()})
+  def unregister_nickname(nickname, reason \\ :disconnect) do
+    GenServer.call({:global, __MODULE__}, {:unregister_nickname, nickname, self(), reason})
+  end
+
+  def change_nickname(old_nickname, new_nickname, pid) do
+    GenServer.call({:global, __MODULE__}, {:change_nickname, old_nickname, new_nickname, pid})
   end
 
   def list_users do
-    GenServer.call(__MODULE__, :list_users)
+    GenServer.call({:global, __MODULE__}, :list_users)
   end
 
   def send_message(sender, recipient, message) do
-    GenServer.cast(__MODULE__, {:send_message, sender, recipient, message})
+    GenServer.cast({:global, __MODULE__}, {:send_message, sender, recipient, message})
   end
 
   # Server callbacks
@@ -72,10 +76,36 @@ defmodule Chat.Server do
   end
 
   @impl true
-  def handle_call({:unregister_nickname, nickname, _pid}, _from, state) do
+  def handle_call({:unregister_nickname, nickname, _pid, reason}, _from, state) do
     new_nicknames = Map.delete(state.nicknames, nickname)
-    Logger.info("Unregistered nickname: #{nickname}")
+
+    case reason do
+      :disconnect ->
+        Logger.info("User #{nickname} left the chat")
+      _ ->
+        Logger.info("Unregistered nickname: #{nickname}")
+    end
+
     {:reply, :ok, %{state | nicknames: new_nicknames}}
+  end
+
+  @impl true
+  def handle_call({:change_nickname, old_nickname, new_nickname, pid}, _from, state) do
+    case validate_nickname(new_nickname) do
+      :ok ->
+        if Map.has_key?(state.nicknames, new_nickname) do
+          {:reply, {:error, "Nickname #{new_nickname} already in use"}, state}
+        else
+          new_nicknames = state.nicknames
+                          |> Map.delete(old_nickname)
+                          |> Map.put(new_nickname, pid)
+
+          Logger.info("User #{old_nickname} changed nickname to #{new_nickname}")
+          {:reply, {:ok, "Nickname changed to #{new_nickname} successfully"}, %{state | nicknames: new_nicknames}}
+        end
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
   @impl true
@@ -88,10 +118,10 @@ defmodule Chat.Server do
           Logger.info("No recipient found with nickname: #{recipient}")
 
         pid ->
-          if Process.alive?(pid) do
+          if is_pid(pid) and Node.ping(node(pid)) != :pang do
             send(pid, {:chat_message, sender, message})
           else
-            Logger.warning("Recipient #{recipient} process is dead, will be cleaned up by monitor")
+            Logger.warning("Recipient #{recipient} process is dead or unreachable, will be cleaned up by monitor")
           end
       end
     end)
