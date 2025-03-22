@@ -13,21 +13,21 @@ import (
 	"sync"
 )
 
-// Client 表示一个连接的客户端
+// Client stands for a chat client
 type Client struct {
-	conn     net.Conn    // TCP连接
-	nickname string      // 客户端昵称
-	outCh    chan string // 发送消息的通道
+	conn     net.Conn    // TCP connection between client and server
+	nickname string      // User nickname
+	outCh    chan string // Channel to send messages
 }
 
-// Server 管理客户端和消息路由
+// Server to manage clients and connections
 type Server struct {
-	mu      sync.RWMutex        // 保护 clients map 的互斥锁
-	clients map[string]*Client  // 昵称到客户端的映射
-	logger  *log.Logger         // 日志记录器
+	mu      sync.RWMutex        // mutex to protect clients map
+	clients map[string]*Client  // map of usernames to clients
+	logger  *log.Logger         // logger for server
 }
 
-// 创建一个新的聊天服务器实例
+// NewServer creates a new server instance
 func NewServer(logger *log.Logger) *Server {
 	return &Server{
 		clients: make(map[string]*Client),
@@ -35,17 +35,19 @@ func NewServer(logger *log.Logger) *Server {
 	}
 }
 
-// 注册新客户端
+// RegisterClient registers a new client with the server
 func (s *Server) RegisterClient(nickname string, client *Client) (bool, string) {
-	// 验证昵称格式
+	// Validate nickname format: ensure it starts with a letter and contains only letters, numbers, and underscores
 	valid, _ := regexp.MatchString(`^[a-zA-Z][a-zA-Z0-9_]{0,11}$`, nickname)
 	if !valid {
 		return false, "Invalid nickname format"
 	}
 
+	// Lock the clients map to prevent concurrent access   
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Check if the nickname is already in use
 	if _, exists := s.clients[nickname]; exists {
 		return false, fmt.Sprintf("Nickname %s already in use", nickname)
 	}
@@ -55,7 +57,7 @@ func (s *Server) RegisterClient(nickname string, client *Client) (bool, string) 
 	return true, fmt.Sprintf("Nickname %s registered successfully", nickname)
 }
 
-// 注销客户端
+// UnregisterClient removes a client from the server
 func (s *Server) UnregisterClient(nickname string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -66,9 +68,9 @@ func (s *Server) UnregisterClient(nickname string) {
 	}
 }
 
-// 更改客户端昵称
+// ChangeNickname changes a client's nickname
 func (s *Server) ChangeNickname(oldNick, newNick string, client *Client) (bool, string) {
-	// 验证新昵称
+	// Validate nickname format: ensure it starts with a letter and contains only letters, numbers, and underscores
 	valid, _ := regexp.MatchString(`^[a-zA-Z][a-zA-Z0-9_]{0,11}$`, newNick)
 	if !valid {
 		return false, "Invalid nickname format"
@@ -77,11 +79,12 @@ func (s *Server) ChangeNickname(oldNick, newNick string, client *Client) (bool, 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Check if the new nickname is already in use
 	if _, exists := s.clients[newNick]; exists {
 		return false, fmt.Sprintf("Nickname %s already in use", newNick)
 	}
 
-	// 检查旧昵称是否存在
+	// Check if the old nickname exists and matches the client
 	if oldClient, exists := s.clients[oldNick]; exists && oldClient == client {
 		delete(s.clients, oldNick)
 		s.clients[newNick] = client
@@ -92,7 +95,7 @@ func (s *Server) ChangeNickname(oldNick, newNick string, client *Client) (bool, 
 	return false, "Cannot change nickname: current nickname not found"
 }
 
-// 列出所有注册用户
+// ListUsers returns a list of all connected users
 func (s *Server) ListUsers() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -102,26 +105,26 @@ func (s *Server) ListUsers() []string {
 		users = append(users, nick)
 	}
 	
-	// 按字母顺序排序用户列表
+	// Sort the list of users alphabetically
 	sort.Strings(users)
 	return users
 }
 
-// 发送消息给指定收件人
+// SendMessage sends a message from a sender to one or more recipients
 func (s *Server) SendMessage(sender, recipients, message string) ([]string, []string) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	var recipientList []string
 	if recipients == "*" {
-		// 发送给除自己外的所有用户
+		// Send to all users except the sender
 		for nick := range s.clients {
 			if nick != sender {
 				recipientList = append(recipientList, nick)
 			}
 		}
 	} else {
-		// 解析收件人列表
+		// Split the recipients string by commas
 		recipientList = strings.Split(recipients, ",")
 		for i, r := range recipientList {
 			recipientList[i] = strings.TrimSpace(r)
@@ -131,7 +134,7 @@ func (s *Server) SendMessage(sender, recipients, message string) ([]string, []st
 	success := []string{}
 	failed := []string{}
 
-	// 发送消息给所有收件人
+	// Send the message to each recipient
 	for _, r := range recipientList {
 		if client, exists := s.clients[r]; exists {
 			formattedMsg := fmt.Sprintf("%s: %s\r\n", sender, message)
@@ -139,7 +142,7 @@ func (s *Server) SendMessage(sender, recipients, message string) ([]string, []st
 			case client.outCh <- formattedMsg:
 				success = append(success, r)
 			default:
-				// 如果通道已满，记为失败
+				// If the client's outCh is full, the message is dropped
 				s.logger.Printf("Failed to send message to %s: channel full", r)
 				failed = append(failed, r)
 			}
@@ -151,7 +154,7 @@ func (s *Server) SendMessage(sender, recipients, message string) ([]string, []st
 	return success, failed
 }
 
-// 处理客户端连接
+// handleConnection handles a new client connection
 func handleConnection(server *Server, conn net.Conn) {
 	defer func() {
 		server.logger.Printf("Connection from %s closed", conn.RemoteAddr())
@@ -160,13 +163,13 @@ func handleConnection(server *Server, conn net.Conn) {
 
 	server.logger.Printf("New connection from %s", conn.RemoteAddr())
 
-	// 初始化客户端
+	// Initialize a new client
 	client := &Client{
 		conn:  conn,
-		outCh: make(chan string, 10), // 使用缓冲通道
+		outCh: make(chan string, 10), // Use a buffered channel of capacity 10
 	}
 
-	// 启动一个 goroutine 处理发送消息到客户端
+	// Start a goroutine to send messages to the client
 	go func() {
 		for msg := range client.outCh {
 			_, err := conn.Write([]byte(msg))
@@ -177,7 +180,7 @@ func handleConnection(server *Server, conn net.Conn) {
 		}
 	}()
 
-	// 发送欢迎消息
+	// Send a welcome message to the client
 	conn.Write([]byte("Welcome to the Go Chat Server!\r\n"))
 	conn.Write([]byte("Please set a nickname with /NICK <nickname> or /N <nickname>\r\n"))
 
@@ -189,16 +192,16 @@ func handleConnection(server *Server, conn net.Conn) {
 		var response string
 		
 
-		// 处理各种命令
+		// Handle commands
 		if strings.HasPrefix(command, "/NICK ") || strings.HasPrefix(command, "/N ") {
-			// NICK 命令
+			// NICK Command
 			parts := strings.SplitN(command, " ", 2)
 			if len(parts) < 2 {
 				response = "Invalid NICK format. Use /NICK <nickname>"
 			} else {
-				newNick := strings.Split(parts[1], " ")[0] // 获取第一个参数
+				newNick := strings.Split(parts[1], " ")[0] // Extract the nickname
 				if nickname == "" {
-					// 注册新昵称
+					// register new nickname
 					success, msg := server.RegisterClient(newNick, client)
 					response = msg
 					if success {
@@ -206,7 +209,7 @@ func handleConnection(server *Server, conn net.Conn) {
 							client.nickname = nickname
 					}
 				} else {
-					// 更改昵称
+					// change nickname
 					success, msg := server.ChangeNickname(nickname, newNick, client); 
 					response = msg
 					if success {
@@ -216,10 +219,10 @@ func handleConnection(server *Server, conn net.Conn) {
 				}
 			}
 		} else if command == "/NICK" || command == "/N" {
-			// 无参数的NICK命令
+			// Invalid NICK command
 			response = "Invalid NICK format. Use /NICK <nickname>"
 		} else if command == "/LIST" || command == "/L" || strings.HasPrefix(command, "/LIST ") || strings.HasPrefix(command, "/L ") {
-			// LIST 命令（忽略额外参数）
+			// LIST Command
 			users := server.ListUsers()
 			if len(users) == 0 {
 				response = "No users currently connected."
@@ -227,7 +230,7 @@ func handleConnection(server *Server, conn net.Conn) {
 				response = "Users: " + strings.Join(users, ", ")
 			}
 		} else if strings.HasPrefix(command, "/MSG ") || strings.HasPrefix(command, "/M ") {
-			// MSG 命令
+			// MSG Command
 			if nickname == "" {
 				response = "You must set a nickname before sending messages. Use /NICK <nickname>"
 			} else {
@@ -254,13 +257,13 @@ func handleConnection(server *Server, conn net.Conn) {
 				}
 			}
 		} else if strings.HasPrefix(command, "/MSG") || strings.HasPrefix(command, "/M") {
-			// 无效的MSG命令
+			// Invalid MSG command
 			response = "Invalid MSG format. Use /MSG <recipients> <message>"
 		} else {
 			response = "Unknown command. Available commands: /NICK <nickname>, /LIST, /MSG <recipients> <message>"
 		}
 
-		// 发送响应并记录 (Send response and log it)
+		// Send the response to the client 
 		conn.Write([]byte(response + "\r\n"))
 	}
 
@@ -268,7 +271,7 @@ func handleConnection(server *Server, conn net.Conn) {
 		server.logger.Printf("Error reading from client: %v", err)
 	}
 
-	// 客户端断开连接，清理资源
+	// Unregister the client when the connection is closed
 	if nickname != "" {
 		server.UnregisterClient(nickname)
 	}
@@ -276,12 +279,14 @@ func handleConnection(server *Server, conn net.Conn) {
 }
 
 func main() {
-	// 命令行参数
+	// Command-line flags
+	// default port is 6666
 	port := flag.Int("port", 6666, "Port to listen on")
+	// default log file is stdout
 	logFile := flag.String("log", "", "Log file (default: stdout)")
 	flag.Parse()
 
-	// 设置日志
+	// Create a logger
 	var logger *log.Logger
 	if *logFile != "" {
 		file, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -296,7 +301,7 @@ func main() {
 
 	server := NewServer(logger)
 
-	// 启动服务器
+	// Start the server
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		logger.Fatalf("Failed to start server: %v", err)
@@ -305,7 +310,7 @@ func main() {
 
 	logger.Printf("Chat server started on port %d", *port)
 
-	// 接受连接
+	// Accept incoming connections
 	for {
 		conn, err := listener.Accept()
 		if err != nil {

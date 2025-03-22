@@ -14,13 +14,14 @@ import (
 )
 
 func main() {
-	// 解析命令行参数
+	// Command-line flags
+	// default host: localhost, port: 6666, timeout: 30s
 	host := flag.String("host", "localhost", "Server hostname")
 	port := flag.Int("port", 6666, "Server port")
 	timeout := flag.Int("timeout", 30, "Connection timeout in seconds")
 	flag.Parse()
 
-	// 连接到服务器，带超时
+	// Connect to the server
 	dialer := net.Dialer{Timeout: time.Duration(*timeout) * time.Second}
 	conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", *host, *port))
 	if err != nil {
@@ -30,20 +31,19 @@ func main() {
 	defer conn.Close()
 
 	fmt.Printf("Connected to chat server at %s:%d\n", *host, *port)
-	fmt.Println("Type /help for available commands")
 
-	// 设置信号处理以优雅地关闭连接
+	// Create a channel to listen for interrupt signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	// 创建一个通道来同步连接终止
+	// Create a channel to listen for disconnect signals
 	disconnectCh := make(chan struct{})
 	
-	// 创建一个等待组来等待 goroutine 完成
+	// WaitGroup to wait for goroutines to finish
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// 接收来自服务器的消息
+	// Receive messages from the server
 	go func() {
 		defer wg.Done()
 		reader := bufio.NewReader(conn)
@@ -51,46 +51,30 @@ func main() {
 			message, err := reader.ReadString('\n')
 			if err != nil {
 				if strings.Contains(err.Error(), "use of closed network connection") {
-					// 正常关闭 (Normal closure)
+					// Normal disconnection
 					break
 				}
 				fmt.Printf("\nConnection lost: %v\n", err)
-				// 通知主线程连接已关闭 (Notify main thread that connection is closed)
+				// Notify main thread that connection is closed
 				close(disconnectCh)
 				break
 			}
 			
-			// 处理特定响应消息 (Handle specific response messages)
-			trimmedMsg := strings.TrimSpace(message)
-			if strings.Contains(trimmedMsg, "Nickname") && 
-			   (strings.Contains(trimmedMsg, "registered") || 
-			    strings.Contains(trimmedMsg, "changed") || 
-			    strings.Contains(trimmedMsg, "already in use")) {
-				fmt.Printf("\n[STATUS] %s\n", trimmedMsg)
-			} else {
-				// 打印普通消息 (Print regular messages)
+			// Print the message from the server
 				fmt.Print(message)
-			}
 		}
 	}()
 
-	// 发送用户输入到服务器
+	// Read user input and send messages to the server
 	go func() {
 		defer wg.Done()
+		printHelp()
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			line := scanner.Text()
 			
-			// 客户端处理特殊命令
-			if line == "/help" {
-				printHelp()
-				continue
-			}
-			if line == "/quit" || line == "/exit" {
-				fmt.Println("Disconnecting from server...")
-				close(disconnectCh)
-				return
-			}
+
+
 			
 			// 发送命令到服务器 (Send command to server)
 			_, err := conn.Write([]byte(line + "\n"))
@@ -107,39 +91,40 @@ func main() {
 			}
 		}
 
+		if scanner.Err() == nil {
+			fmt.Println("Disconnecting from server...")
+			close(disconnectCh)
+			return
+		}
+
 		if err := scanner.Err(); err != nil {
 			fmt.Printf("Error reading from stdin: %v\n", err)
 		}
 		close(disconnectCh)
 	}()
 
-	// 等待中断信号或连接断开
+	// Wait for interrupt signal or disconnect signal
 	select {
 	case <-sigCh:
 		fmt.Println("\nReceived interrupt signal")
 	case <-disconnectCh:
-		// 其他 goroutine 已经通知断开连接
+		// Do nothing
 	}
 
-	// 关闭连接
+	// Close the connection
 	conn.Close()
 
-	// 等待所有 goroutine 完成
+	// Wait for goroutines to finish
 	wg.Wait()
 	fmt.Println("Connection closed")
 }
 
-// 打印帮助信息
+// printHelp prints the available commands to the user
 func printHelp() {
-	fmt.Println("\n--- Chat Client Help ---")
-	fmt.Println("Server Commands:")
+	fmt.Println("Available Commands:")
 	fmt.Println("  /NICK <nickname>, /N <nickname> - Set or change your nickname")
 	fmt.Println("  /LIST, /L                       - List all connected users")
 	fmt.Println("  /MSG <user> <message>, /M <user> <message> - Send a private message")
 	fmt.Println("  /MSG * <message>, /M * <message>           - Send a message to all users")
-	fmt.Println("\nClient Commands:")
-	fmt.Println("  /help  - Show this help message")
-	fmt.Println("  /quit  - Disconnect from the server")
-	fmt.Println("  /exit  - Disconnect from the server")
 	fmt.Println("-------------------")
 }
