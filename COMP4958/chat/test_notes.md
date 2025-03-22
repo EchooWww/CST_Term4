@@ -13,7 +13,7 @@ iex --sname proxy -S mix
 Ping the server from the proxy server:
 
 ```elixir
-Node.ping(:"server@hostname")
+Node.ping(:"server@Bug-Free")
 ```
 
 Start the proxy server:

@@ -9,7 +9,7 @@ defmodule Chat.Server do
   end
 
   def register_nickname(nickname, pid) do
-    GenServer.call({:global, __MODULE__}, {:register_nickname, nickname,pid})
+    GenServer.call({:global, __MODULE__}, {:register_nickname, nickname, pid})
   end
 
   def unregister_nickname(nickname, reason \\ :disconnect) do
@@ -28,28 +28,25 @@ defmodule Chat.Server do
     GenServer.call({:global, __MODULE__}, {:send_message, sender, recipient, message})
   end
 
-
   # Server callbacks
   @impl true
   def init(_opts) do
     Logger.info("Starting Chat.Server")
-    # Recover nicknames from ETS table
-    nicknames = case :ets.lookup(@store, :nicknames) do
-      [{:nicknames, nicknames}] -> nicknames
-      [] -> %{}
-    end
+    # Recover nicknames from ETS as individual entries
+    nicknames = load_nicknames_from_ets()
+
+    # Monitor all recovered processes
     Enum.each(nicknames, fn {_nickname, pid} ->
       Process.monitor(pid)
     end)
+
     Logger.info("Chat server initialized with #{map_size(nicknames)} existing users")
     {:ok, %{nicknames: nicknames}}
   end
 
   @impl true
-  def terminate(_reason, state) do
-    # Save state to ETS table before shutting down
-    :ets.insert(@store, {:nicknames, state.nicknames})
-    Logger.info("Chat server terminated, saved #{map_size(state.nicknames)} nicknames to ETS")
+  def terminate(_reason, _state) do
+    Logger.info("Chat server terminated")
     :ok
   end
 
@@ -61,13 +58,18 @@ defmodule Chat.Server do
           {:reply, {:error, "Nickname #{nickname} already in use"}, state}
         else
           Process.monitor(pid)
+          # Add to in-memory state
           new_nicknames = Map.put(state.nicknames, nickname, pid)
+
+          # Save individual nickname to ETS
+          :ets.insert(@store, {{:nickname, nickname}, pid})
+
           Logger.info("User registered with nickname: #{nickname}")
           {:reply, {:ok, "Nickname #{nickname} registered successfully"}, %{state | nicknames: new_nicknames}}
         end
       {:error, reason} ->
         {:reply, {:error, reason}, state}
-      end
+    end
   end
 
   @impl true
@@ -79,6 +81,9 @@ defmodule Chat.Server do
   @impl true
   def handle_call({:unregister_nickname, nickname, _pid, reason}, _from, state) do
     new_nicknames = Map.delete(state.nicknames, nickname)
+
+    # Delete nickname from ETS
+    :ets.delete(@store, {:nickname, nickname})
 
     case reason do
       :disconnect ->
@@ -97,9 +102,14 @@ defmodule Chat.Server do
         if Map.has_key?(state.nicknames, new_nickname) do
           {:reply, {:error, "Nickname #{new_nickname} already in use"}, state}
         else
+          # Update in-memory state
           new_nicknames = state.nicknames
                           |> Map.delete(old_nickname)
                           |> Map.put(new_nickname, pid)
+
+          # Update ETS - delete old nickname and add new one
+          :ets.delete(@store, {:nickname, old_nickname})
+          :ets.insert(@store, {{:nickname, new_nickname}, pid})
 
           Logger.info("User #{old_nickname} changed nickname to #{new_nickname}")
           {:reply, {:ok, "Nickname changed to #{new_nickname} successfully"}, %{state | nicknames: new_nicknames}}
@@ -110,39 +120,51 @@ defmodule Chat.Server do
   end
 
   @impl true
-def handle_call({:send_message, sender, recipients, message}, _from, state) do
-  recipients_list = parse_recipients(recipients, state.nicknames, sender)
+  def handle_call({:send_message, sender, recipients, message}, _from, state) do
+    recipients_list = parse_recipients(recipients, state.nicknames, sender)
 
-  {success, failed} = Enum.reduce(recipients_list, {[], []}, fn recipient, {success, failed} ->
-    case Map.get(state.nicknames, recipient) do
-      nil ->
-        Logger.info("No recipient found with nickname: #{recipient}")
-        {success, [recipient | failed]}
-
-      pid ->
-        if is_pid(pid) and Node.ping(node(pid)) != :pang do
-          send(pid, {:chat_message, sender, message})
-          {[recipient | success], failed}
-        else
-          Logger.warning("Recipient #{recipient} process is dead or unreachable, will be cleaned up by monitor")
+    {success, failed} = Enum.reduce(recipients_list, {[], []}, fn recipient, {success, failed} ->
+      case Map.get(state.nicknames, recipient) do
+        nil ->
+          Logger.info("No recipient found with nickname: #{recipient}")
           {success, [recipient | failed]}
-        end
-    end
-  end)
 
-  {:reply, {Enum.reverse(success), Enum.reverse(failed)}, state}
-end
+        pid ->
+          if is_pid(pid) and Node.ping(node(pid)) != :pang do
+            send(pid, {:chat_message, sender, message})
+            {[recipient | success], failed}
+          else
+            Logger.warning("Recipient #{recipient} process is dead or unreachable, will be cleaned up by monitor")
+            {success, [recipient | failed]}
+          end
+      end
+    end)
 
+    {:reply, {Enum.reverse(success), Enum.reverse(failed)}, state}
+  end
 
   @impl true
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
     {nickname, new_nicknames} = find_and_remove_by_pid(state.nicknames, pid)
 
     if nickname do
+      # Delete disconnected user from ETS
+      :ets.delete(@store, {:nickname, nickname})
       Logger.info("User #{nickname} disconnected: #{inspect(reason)}")
     end
 
     {:noreply, %{state | nicknames: new_nicknames}}
+  end
+
+  # Private functions
+
+  # Load all nicknames from ETS
+  defp load_nicknames_from_ets do
+    # Match all entries with {:nickname, _} keys)
+    :ets.match_object(@store, {{:nickname, :_}, :_})
+    |> Enum.reduce(%{}, fn {{:nickname, nickname}, pid}, acc ->
+      Map.put(acc, nickname, pid)
+    end)
   end
 
   defp validate_nickname(nickname) do
