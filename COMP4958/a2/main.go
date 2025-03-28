@@ -256,9 +256,6 @@ func handleConnection(server *Server, conn net.Conn) {
 					}
 				}
 			}
-		} else if strings.HasPrefix(command, "/MSG") || strings.HasPrefix(command, "/M") {
-			// Invalid MSG command
-			response = "Invalid MSG format. Use /MSG <recipients> <message>"
 		} else {
 			response = "Unknown command. Available commands: /NICK <nickname>, /LIST, /MSG <recipients> <message>"
 		}

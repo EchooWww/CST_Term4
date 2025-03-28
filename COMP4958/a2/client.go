@@ -35,9 +35,6 @@ func main() {
 	// Create a channel to listen for interrupt signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-	// Create a channel to listen for disconnect signals
-	disconnectCh := make(chan struct{})
 	
 	// WaitGroup to wait for goroutines to finish
 	var wg sync.WaitGroup
@@ -55,8 +52,6 @@ func main() {
 					break
 				}
 				fmt.Printf("\nConnection lost: %v\n", err)
-				// Notify main thread that connection is closed
-				close(disconnectCh)
 				break
 			}
 			
@@ -72,19 +67,14 @@ func main() {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			line := scanner.Text()
-			
-
-
-			
-			// 发送命令到服务器 (Send command to server)
+			// Send command to server
 			_, err := conn.Write([]byte(line + "\n"))
 			if err != nil {
 				fmt.Printf("Error sending message: %v\n", err)
-				close(disconnectCh)
 				break
 			}
 			
-			// 记录用户操作 (Log user actions)
+			// Log user actions
 			if strings.HasPrefix(line, "/NICK ") || strings.HasPrefix(line, "/N ") {
 				nickname := strings.Split(line, " ")[1]
 				fmt.Printf("Attempting to register/change nickname to: %s\n", nickname)
@@ -93,22 +83,18 @@ func main() {
 
 		if scanner.Err() == nil {
 			fmt.Println("Disconnecting from server...")
-			close(disconnectCh)
 			return
 		}
 
 		if err := scanner.Err(); err != nil {
 			fmt.Printf("Error reading from stdin: %v\n", err)
 		}
-		close(disconnectCh)
 	}()
 
 	// Wait for interrupt signal or disconnect signal
 	select {
 	case <-sigCh:
 		fmt.Println("\nReceived interrupt signal")
-	case <-disconnectCh:
-		// Do nothing
 	}
 
 	// Close the connection

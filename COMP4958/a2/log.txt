@@ -1,3 +1,0 @@
-2025/03/21 21:45:33 Chat server started on port 6666
-2025/03/21 21:46:12 New connection from [::1]:58412
-2025/03/21 21:46:14 User registered with nickname: aa
